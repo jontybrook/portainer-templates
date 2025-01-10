@@ -2,6 +2,11 @@ import os
 import string
 import json
 
+# Source: https://ask.replit.com/t/how-do-i-make-colored-text-in-python/29288/18
+reset_color = "\033[0m" # Important!
+def rgb(r, g, b):
+  return f"\033[38;2;{r};{g};{b}m"
+
 # Get list of files in sources
 dir = os.path.dirname(os.path.abspath(__file__))
 templates_src_dir = os.path.join(dir, '../sources/')
@@ -17,20 +22,38 @@ for file in files:
   file_path = os.path.join(templates_src_dir, file)
   if os.path.isfile(file_path) and file.endswith('.json'):
     with open(file_path) as f:
-      # Load the JSON into a variable
-      data = json.load(f)['templates']
-      # Append the template object to the templates list
-      templates = templates + data
+      try:
+        # Load the JSON into a variable
+        data = json.load(f)['templates']
+        # Append the template object to the templates list
+        templates = templates + data
+      except json.decoder.JSONDecodeError as err:
+        print(f'{rgb(255, 0, 0)}Skipping one of the sources due to an error:{reset_color} {f.name}')
+        print(f'Error msg: {err.msg}')
 
 seen_titles = set()
 filtered_data = []
 
-for x in templates:
-    normalized_title = x['title'].translate(str.maketrans('', '', string.punctuation)).replace(' ', '').lower()
-    if normalized_title not in seen_titles:
-        seen_titles.add(normalized_title)
-        filtered_data.append(x)
+def normalize_string(original, lowercase = True):
+  normalized = original.translate(str.maketrans('', '', string.punctuation)).replace(' ', '')
+  return normalized.lower() if lowercase else normalized.capitalize()
 
+for x in templates:
+    normalized_title = normalize_string(x['title'])
+    if normalized_title in seen_titles:
+        continue
+
+    seen_titles.add(normalized_title)
+    filtered_data.append(x)
+
+    categories = x.get('categories', [])
+    x['categories'] = []
+
+    for category in categories:
+      normalized_category = normalize_string(category, lowercase = False)
+
+      if normalized_category not in x['categories']:
+        x['categories'].append(normalized_category)
 
 fileData = {
   'version': '2',
